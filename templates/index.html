@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sensor-Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --text-color: #343a40;
+            --card-bg: #ffffff;
+            --temp-header: #ff6b6b;
+            --humidity-header: #4dabf7;
+            --chart-bg: #ffffff;
+            --border-color: rgba(0, 0, 0, 0.125);
+        }
+ 
+        [data-theme="dark"] {
+            --bg-color: #1a1a1a;
+            --text-color: #e9ecef;
+            --card-bg: #2d2d2d;
+            --temp-header: #ff5252;
+            --humidity-header: #42a5f5;
+            --chart-bg: #2d2d2d;
+            --border-color: rgba(255, 255, 255, 0.125);
+        }
+ 
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        .dashboard {
+            padding: 2rem 0;
+        }
+        
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, background-color 0.3s ease;
+            margin-bottom: 1.5rem;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            border-radius: 15px 15px 0 0 !important;
+            font-weight: 600;
+            background-color: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .temp-card .card-header {
+            background-color: var(--temp-header);
+            color: white;
+        }
+        
+        .humidity-card .card-header {
+            background-color: var(--humidity-header);
+            color: white;
+        }
+        
+        .value {
+            font-size: 3rem;
+            font-weight: 700;
+        }
+        
+        .unit {
+            font-size: 1.5rem;
+            opacity: 0.7;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .status-connected {
+            background-color: #51cf66;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-disconnected {
+            background-color: #ff6b6b;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        .last-update {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        
+        [data-theme="dark"] .last-update {
+            color: #adb5bd;
+        }
+        
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+        
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-color);
+            transition: transform 0.3s ease;
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+        
+        .header-container {
+            position: relative;
+        }
+        
+        .download-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .download-btn:hover {
+            background-color: #45a049;
+        }
+        
+        [data-theme="dark"] .download-btn {
+            background-color: #2e7d32;
+        }
+        
+        [data-theme="dark"] .download-btn:hover {
+            background-color: #1b5e20;
+        }
+        
+        .settings-btn {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .settings-btn:hover {
+            background-color: #0b7dda;
+        }
+        
+        [data-theme="dark"] .settings-btn {
+            background-color: #1565C0;
+        }
+        
+        [data-theme="dark"] .settings-btn:hover {
+            background-color: #0D47A1;
+        }
+        
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+        }
+        
+        .toast {
+            min-width: 300px;
+        }
+        
+        .toast.warning {
+            background-color: #ff9800;
+            color: white;
+        }
+        
+        .toast.danger {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        .toast.info {
+            background-color: #2196F3;
+            color: white;
+        }
+        
+        .threshold-indicator {
+            font-size: 0.8rem;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .threshold-warning {
+            color: #ff9800;
+        }
+        
+        .threshold-danger {
+            color: #f44336;
+        }
+        
+        .modal-content {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+        }
+        
+        .modal-header {
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .modal-footer {
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .form-label {
+            font-weight: 500;
+        }
+        
+        .form-control {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+        
+        .form-control:focus {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border-color: #0d6efd;
+        }
+        
+        .settings-section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .settings-section h5 {
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container dashboard">
+        <header class="text-center mb-4 header-container">
+            <button id="theme-toggle" class="theme-toggle">
+                <i class="bi bi-moon-fill" id="theme-icon"></i>
+            </button>
+            <h1 class="display-4">Sensor-Dashboard</h1>
+            <p class="lead">Echtzeitdaten von MQTT-Sensoren</p>
+            <div class="mt-2">
+                <span id="status-indicator" class="status-indicator status-disconnected"></span>
+                <span id="status-text">Verbindung wird hergestellt...</span>
+            </div>
+        </header>
+ 
+        <main>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card temp-card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-thermometer-half"></i> Temperatur</span>
+                            <span class="last-update" id="temp-update">--:--:--</span>
+                        </div>
+                        <div class="card-body text-center">
+                            <div id="temperature-value" class="value">--</div>
+                            <div class="unit">°C</div>
+                            <div id="temp-threshold" class="threshold-indicator">
+                                <i class="bi bi-exclamation-triangle-fill"></i> <span id="temp-threshold-text"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card humidity-card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-droplet-half"></i> Luftfeuchtigkeit</span>
+                            <span class="last-update" id="humidity-update">--:--:--</span>
+                        </div>
+                        <div class="card-body text-center">
+                            <div id="humidity-value" class="value">--</div>
+                            <div class="unit">%</div>
+                            <div id="humidity-threshold" class="threshold-indicator">
+                                <i class="bi bi-exclamation-triangle-fill"></i> <span id="humidity-threshold-text"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+ 
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-graph-up"></i> Verlauf</span>
+                    <div>
+                        <button id="settings-btn" class="settings-btn me-2" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                            <i class="bi bi-gear-fill"></i> Einstellungen
+                        </button>
+                        <button id="download-btn" class="download-btn">
+                            <i class="bi bi-download"></i> CSV Export
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="sensorChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+ 
+    <!-- Toast Container für Benachrichtigungen -->
+    <div class="toast-container"></div>
+ 
+    <!-- Einstellungen Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="settingsModalLabel">
+                        <i class="bi bi-gear-fill"></i> Einstellungen
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="settings-form">
+                        <div class="settings-section">
+                            <h5><i class="bi bi-thermometer-half"></i> Temperatur-Grenzwerte</h5>
+                            <div class="mb-3">
+                                <label for="temp-min" class="form-label">Mindesttemperatur (°C)</label>
+                                <input type="number" class="form-control" id="temp-min" step="0.1" required>
+                                <div class="form-text">Benachrichtigung, wenn die Temperatur unter diesen Wert fällt.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="temp-max" class="form-label">Höchsttemperatur (°C)</label>
+                                <input type="number" class="form-control" id="temp-max" step="0.1" required>
+                                <div class="form-text">Benachrichtigung, wenn die Temperatur über diesen Wert steigt.</div>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-section">
+                            <h5><i class="bi bi-droplet-half"></i> Luftfeuchtigkeits-Grenzwerte</h5>
+                            <div class="mb-3">
+                                <label for="humidity-min" class="form-label">Mindestluftfeuchtigkeit (%)</label>
+                                <input type="number" class="form-control" id="humidity-min" step="0.1" required>
+                                <div class="form-text">Benachrichtigung, wenn die Luftfeuchtigkeit unter diesen Wert fällt.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="humidity-max" class="form-label">Höchstluftfeuchtigkeit (%)</label>
+                                <input type="number" class="form-control" id="humidity-max" step="0.1" required>
+                                <div class="form-text">Benachrichtigung, wenn die Luftfeuchtigkeit über diesen Wert steigt.</div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="button" class="btn btn-primary" id="save-settings">Speichern</button>
+                </div>
+            </div>
+        </div>
+    </div>
+ 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Dark Mode Funktionalität
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
+            const htmlElement = document.documentElement;
+            
+            // Überprüfen, ob im LocalStorage ein Theme gespeichert ist
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                htmlElement.setAttribute('data-theme', savedTheme);
+                updateThemeIcon(savedTheme);
+            }
+            
+            // Theme-Wechsel-Funktion
+            themeToggle.addEventListener('click', function() {
+                const currentTheme = htmlElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                htmlElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateThemeIcon(newTheme);
+                
+                // Chart bei Theme-Wechsel aktualisieren
+                updateChartTheme();
+            });
+            
+            // Icon basierend auf dem aktuellen Theme aktualisieren
+            function updateThemeIcon(theme) {
+                if (theme === 'dark') {
+                    themeIcon.className = 'bi bi-sun-fill';
+                } else {
+                    themeIcon.className = 'bi bi-moon-fill';
+                }
+            }
+            
+            // Chart initialisieren
+            const ctx = document.getElementById('sensorChart').getContext('2d');
+            const isDarkMode = htmlElement.getAttribute('data-theme') === 'dark';
+            
+            const sensorChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Temperatur (°C)',
+                        data: [],
+                        borderColor: '#ff6b6b',
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Luftfeuchtigkeit (%)',
+                        data: [],
+                        borderColor: '#4dabf7',
+                        backgroundColor: 'rgba(77, 171, 247, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                            },
+                            ticks: {
+                                color: isDarkMode ? '#e9ecef' : '#343a40'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                            },
+                            ticks: {
+                                color: isDarkMode ? '#e9ecef' : '#343a40'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: isDarkMode ? '#e9ecef' : '#343a40'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Chart-Theme aktualisieren
+            function updateChartTheme() {
+                const isDarkMode = htmlElement.getAttribute('data-theme') === 'dark';
+                
+                sensorChart.options.scales.y.grid.color = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                sensorChart.options.scales.y.ticks.color = isDarkMode ? '#e9ecef' : '#343a40';
+                sensorChart.options.scales.x.grid.color = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                sensorChart.options.scales.x.ticks.color = isDarkMode ? '#e9ecef' : '#343a40';
+                sensorChart.options.plugins.legend.labels.color = isDarkMode ? '#e9ecef' : '#343a40';
+                
+                sensorChart.update();
+            }
+ 
+            // Toast-Benachrichtigung anzeigen
+            function showToast(message, type = 'warning', title = 'Warnung') {
+                const toastContainer = document.querySelector('.toast-container');
+                const toastId = 'toast-' + Date.now();
+                
+                const toastHtml = `
+                    <div id="${toastId}" class="toast ${type}" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="toast-header">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong class="me-auto">${title}</strong>
+                            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                    </div>
+                `;
+                
+                toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+                
+                const toastElement = document.getElementById(toastId);
+                const toast = new bootstrap.Toast(toastElement, {
+                    autohide: true,
+                    delay: 5000
+                });
+                
+                toast.show();
+                
+                // Entferne das Toast-Element nach dem Ausblenden
+                toastElement.addEventListener('hidden.bs.toast', function() {
+                    toastElement.remove();
+                });
+            }
+ 
+            // Funktion zum Aktualisieren der Daten
+            let lastTempThresholdCheck = null;
+            let lastHumidityThresholdCheck = null;
+            
+            function updateData() {
+                fetch('/data')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Status aktualisieren
+                        const statusIndicator = document.getElementById('status-indicator');
+                        const statusText = document.getElementById('status-text');
+                        
+                        if (data.temperature !== null && data.humidity !== null) {
+                            statusIndicator.className = 'status-indicator status-connected';
+                            statusText.textContent = 'Verbunden';
+                            
+                            // Werte aktualisieren
+                            document.getElementById('temperature-value').textContent = data.temperature.toFixed(1);
+                            document.getElementById('humidity-value').textContent = data.humidity.toFixed(1);
+                            
+                            // Zeitstempel aktualisieren
+                            const now = new Date();
+                            const timeString = now.toLocaleTimeString();
+                            document.getElementById('temp-update').textContent = timeString;
+                            document.getElementById('humidity-update').textContent = timeString;
+                            
+                            // Temperatur-Grenzwerte prüfen und Benachrichtigung anzeigen
+                            const tempThreshold = document.getElementById('temp-threshold');
+                            const tempThresholdText = document.getElementById('temp-threshold-text');
+                            
+                            if (data.temperature < data.temp_min) {
+                                tempThreshold.style.display = 'block';
+                                tempThreshold.className = 'threshold-indicator threshold-warning';
+                                tempThresholdText.textContent = `Unter Mindestwert (${data.temp_min}°C)`;
+                                
+                                // Nur benachrichtigen, wenn sich der Status geändert hat
+                                if (lastTempThresholdCheck !== 'min') {
+                                    showToast(`Temperatur ${data.temperature.toFixed(1)}°C unter dem Mindestwert von ${data.temp_min}°C`, 'warning', 'Temperaturwarnung');
+                                    lastTempThresholdCheck = 'min';
+                                }
+                            } else if (data.temperature > data.temp_max) {
+                                tempThreshold.style.display = 'block';
+                                tempThreshold.className = 'threshold-indicator threshold-danger';
+                                tempThresholdText.textContent = `Über Höchstwert (${data.temp_max}°C)`;
+                                
+                                // Nur benachrichtigen, wenn sich der Status geändert hat
+                                if (lastTempThresholdCheck !== 'max') {
+                                    showToast(`Temperatur ${data.temperature.toFixed(1)}°C über dem Höchstwert von ${data.temp_max}°C`, 'danger', 'Temperaturwarnung');
+                                    lastTempThresholdCheck = 'max';
+                                }
+                            } else {
+                                tempThreshold.style.display = 'none';
+                                lastTempThresholdCheck = null;
+                            }
+                            
+                            // Luftfeuchtigkeits-Grenzwerte prüfen und Benachrichtigung anzeigen
+                            const humidityThreshold = document.getElementById('humidity-threshold');
+                            const humidityThresholdText = document.getElementById('humidity-threshold-text');
+                            
+                            if (data.humidity < data.humidity_min) {
+                                humidityThreshold.style.display = 'block';
+                                humidityThreshold.className = 'threshold-indicator threshold-warning';
+                                humidityThresholdText.textContent = `Unter Mindestwert (${data.humidity_min}%)`;
+                                
+                                // Nur benachrichtigen, wenn sich der Status geändert hat
+                                if (lastHumidityThresholdCheck !== 'min') {
+                                    showToast(`Luftfeuchtigkeit ${data.humidity.toFixed(1)}% unter dem Mindestwert von ${data.humidity_min}%`, 'warning', 'Luftfeuchtigkeitswarnung');
+                                    lastHumidityThresholdCheck = 'min';
+                                }
+                            } else if (data.humidity > data.humidity_max) {
+                                humidityThreshold.style.display = 'block';
+                                humidityThreshold.className = 'threshold-indicator threshold-danger';
+                                humidityThresholdText.textContent = `Über Höchstwert (${data.humidity_max}%)`;
+                                
+                                // Nur benachrichtigen, wenn sich der Status geändert hat
+                                if (lastHumidityThresholdCheck !== 'max') {
+                                    showToast(`Luftfeuchtigkeit ${data.humidity.toFixed(1)}% über dem Höchstwert von ${data.humidity_max}%`, 'danger', 'Luftfeuchtigkeitswarnung');
+                                    lastHumidityThresholdCheck = 'max';
+                                }
+                            } else {
+                                humidityThreshold.style.display = 'none';
+                                lastHumidityThresholdCheck = null;
+                            }
+                            
+                            // Chart aktualisieren
+                            if (data.history && data.history.length > 0) {
+                                sensorChart.data.labels = data.history.map(item => item.timestamp);
+                                sensorChart.data.datasets[0].data = data.history.map(item => item.temperature);
+                                sensorChart.data.datasets[1].data = data.history.map(item => item.humidity);
+                                sensorChart.update();
+                            }
+                        } else {
+                            statusIndicator.className = 'status-indicator status-disconnected';
+                            statusText.textContent = 'Keine Daten verfügbar';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Fehler beim Abrufen der Daten:', error);
+                        const statusIndicator = document.getElementById('status-indicator');
+                        const statusText = document.getElementById('status-text');
+                        statusIndicator.className = 'status-indicator status-disconnected';
+                        statusText.textContent = 'Verbindungsfehler';
+                    });
+            }
+ 
+            // Einstellungen laden
+            function loadSettings() {
+                fetch('/thresholds')
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('temp-min').value = data.temp_min;
+                        document.getElementById('temp-max').value = data.temp_max;
+                        document.getElementById('humidity-min').value = data.humidity_min;
+                        document.getElementById('humidity-max').value = data.humidity_max;
+                    })
+                    .catch(error => {
+                        console.error('Fehler beim Laden der Einstellungen:', error);
+                    });
+            }
+ 
+            // Einstellungen speichern
+            document.getElementById('save-settings').addEventListener('click', function() {
+                const tempMin = parseFloat(document.getElementById('temp-min').value);
+                const tempMax = parseFloat(document.getElementById('temp-max').value);
+                const humidityMin = parseFloat(document.getElementById('humidity-min').value);
+                const humidityMax = parseFloat(document.getElementById('humidity-max').value);
+                
+                if (tempMin >= tempMax) {
+                    showToast('Die Mindesttemperatur muss niedriger als die Höchsttemperatur sein.', 'warning', 'Einstellungsfehler');
+                    return;
+                }
+                
+                if (humidityMin >= humidityMax) {
+                    showToast('Die Mindestluftfeuchtigkeit muss niedriger als die Höchstluftfeuchtigkeit sein.', 'warning', 'Einstellungsfehler');
+                    return;
+                }
+                
+                fetch('/thresholds', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        temp_min: tempMin,
+                        temp_max: tempMax,
+                        humidity_min: humidityMin,
+                        humidity_max: humidityMax
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Modal schließen
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
+                        modal.hide();
+                        
+                        // Erfolgsnachricht anzeigen
+                        showToast('Einstellungen erfolgreich gespeichert', 'info', 'Erfolg');
+                        
+                        // Daten aktualisieren, um die neuen Grenzwerte anzuzeigen
+                        updateData();
+                    } else {
+                        showToast('Fehler beim Speichern der Einstellungen.', 'danger', 'Fehler');
+                    }
+                })
+                .catch(error => {
+                    console.error('Fehler beim Speichern der Einstellungen:', error);
+                    showToast('Fehler beim Speichern der Einstellungen.', 'danger', 'Fehler');
+                });
+            });
+ 
+            // CSV-Download-Funktion
+            document.getElementById('download-btn').addEventListener('click', function() {
+                window.location.href = '/export/csv';
+            });
+ 
+            // Einstellungen beim Öffnen des Modals laden
+            document.getElementById('settingsModal').addEventListener('show.bs.modal', function() {
+                loadSettings();
+            });
+ 
+            // Erste Aktualisierung und dann alle 2 Sekunden
+            updateData();
+            setInterval(updateData, 2000);
+        });
+    </script>
+</body>
+</html>
